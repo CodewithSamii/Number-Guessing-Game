@@ -1,138 +1,127 @@
 import tkinter as tk
 import random
+from tkinter import messagebox
 
 class NumberGuessingGame:
-    def __init__(self, master):
-        self.master = master
-        master.title("Number Guessing Game")
-        master.geometry("400x500")
-        master.resizable(False, False)
-        master.configure(bg="#2C3E50")
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Number Guessing Game")
+        self.root.geometry("360x640") 
+        self.root.config(bg="lightblue")
 
-        self.max_attempts = 7
-        self.attempts = 0
-        self.secret_number = None
+        self.max_chances = 7
 
-        master.bind('<Return>', lambda event: self.check_guess())
+        # Title and instructions
+        tk.Label(root, text="Number Guessing Game", font=("Arial", 18, "bold"), bg="lightblue").pack(pady=10)
+        tk.Label(root, text="Guess a number between 1 and 100", font=("Arial", 12), bg="lightblue").pack()
 
-        self.title_label = tk.Label(
-            master,
-            text="Guess the Number!",
-            font=("Helvetica", 20, "bold"),
-            fg="#ECF0F1",
-            bg="#2C3E50"
-        )
-        self.title_label.pack(pady=15)
+        # Input box: editable, piped cursor
+        self.input_var = tk.StringVar()
+        self.display = tk.Entry(root, textvariable=self.input_var, font=("Arial", 20), justify="center", width=6)
+        self.display.pack(pady=10)
+        self.display.focus_set()  # Enable cursor
 
-        self.instruction_label = tk.Label(
-            master,
-            text="I'm thinking of a number between 1 and 100.\nYou’ve got 7 tries!",
-            font=("Arial", 14),
-            fg="#ECF0F1",
-            bg="#2C3E50",
-            justify=tk.CENTER
-        )
-        self.instruction_label.pack(pady=10)
+        # Number pad (calculator-style)
+        self.create_number_pad()
 
-        self.input_frame = tk.Frame(master, bg="#2C3E50")
-        self.input_frame.pack(pady=20)
+        # Submit button
+        self.submit_btn = tk.Button(root, text="Submit", command=self.check_guess,
+                                    bg="green", fg="white", width=15, font=("Arial", 12))
+        self.submit_btn.pack(pady=10)
 
-        self.guess_entry = tk.Entry(
-            self.input_frame,
-            font=("Arial", 16),
-            width=26,
-            justify=tk.CENTER
-        )
-        self.guess_entry.pack(pady=(0, 8), ipady=3)
+        # Feedback labels
+        self.result_label = tk.Label(root, text="", font=("Arial", 12), bg="lightblue")
+        self.result_label.pack(pady=10)
 
-        self.guess_button = tk.Button(
-            self.input_frame,
-            text="Guess",
-            font=("Arial", 14),
-            command=self.check_guess,
-            bg="#3498DB",
-            fg="#ECF0F1",
-            activebackground="#2980B9",
-            width=10
-        )
-        self.guess_button.pack(ipady=1)
+        self.chances_label = tk.Label(root, text="", font=("Arial", 12), bg="lightblue")
+        self.chances_label.pack()
 
-        self.feedback_label = tk.Label(
-            master,
-            text="",
-            font=("Arial", 14),
-            fg="#E74C3C",
-            bg="#2C3E50",
-            wraplength=400,
-            justify=tk.CENTER
-        )
-        self.feedback_label.pack(pady=15)
+        # Play again button
+        self.play_again_btn = tk.Button(root, text="Play Again", command=self.reset_game,
+                                        state='disabled', width=15)
+        self.play_again_btn.pack(pady=10)
 
-        self.remaining_label = tk.Label(
-            master,
-            text=f"Attempts remaining: {self.max_attempts}",
-            font=("Arial", 12),
-            fg="#ECF0F1",
-            bg="#2C3E50"
-        )
-        self.remaining_label.pack(pady=5)
+        # Bind Enter key
+        self.root.bind("<Return>", lambda event: self.check_guess())
 
-        self.reset_button = tk.Button(
-            master,
-            text="Play Again",
-            font=("Arial", 14),
-            command=self.reset_game,
-            bg="#27AE60",
-            fg="#ECF0F1",
-            activebackground="#1E8449",
-            width=12
-        )
-        self.reset_button.pack(pady=20)
+        # Start a new game
+        self.reset_game()
 
-        self.start_game()
+    def create_number_pad(self):
+        pad_frame = tk.Frame(self.root, bg="lightblue")
+        pad_frame.pack()
 
-    def start_game(self):
-        self.secret_number = random.randint(1, 100)
-        self.attempts = 0
-        self.guess_button.config(state=tk.NORMAL)
-        self.feedback_label.config(text="")
-        self.guess_entry.delete(0, tk.END)
-        self.update_remaining_label()
+        btn_font = ("Arial", 16)
+        for i in range(1, 10):
+            b = tk.Button(pad_frame, text=str(i), font=btn_font, width=5, height=2,
+                          command=lambda x=i: self.append_digit(x))
+            row, col = divmod(i - 1, 3)
+            b.grid(row=row, column=col, padx=5, pady=5)
 
-    def update_remaining_label(self):
-        left = self.max_attempts - self.attempts
-        self.remaining_label.config(text=f"Attempts remaining: {left}")
+        zero_btn = tk.Button(pad_frame, text="0", font=btn_font, width=16, height=2,
+                             command=lambda: self.append_digit(0))
+        zero_btn.grid(row=3, column=0, columnspan=3, pady=5)
 
-    def check_guess(self):
-        guess = self.guess_entry.get()
-        if not guess.isdigit():
-            self.feedback_label.config(text="Please type a number.")
-            return
+        clear_btn = tk.Button(self.root, text="Clear", font=("Arial", 12),
+                              bg="red", fg="white", width=10, command=self.clear_input)
+        clear_btn.pack()
 
-        guess = int(guess)
-        self.attempts += 1
-        left = self.max_attempts - self.attempts
+    def append_digit(self, digit):
+        current = self.input_var.get()
+        if len(current) < 3:
+            self.input_var.set(current + str(digit))
 
-        if guess < self.secret_number:
-            self.feedback_label.config(text=f"Too low! {left} tries left.")
-        elif guess > self.secret_number:
-            self.feedback_label.config(text=f"Too high! {left} tries left.")
-        else:
-            self.feedback_label.config(text=f"You got it! Took you {self.attempts} tries.")
-            self.guess_button.config(state=tk.DISABLED)
-            return
-
-        if left <= 0:
-            self.feedback_label.config(text=f"No more tries! The number was {self.secret_number}.")
-            self.guess_button.config(state=tk.DISABLED)
-
-        self.guess_entry.delete(0, tk.END)
-        self.update_remaining_label()
+    def clear_input(self):
+        self.input_var.set("")
 
     def reset_game(self):
-        self.start_game()
+        self.number = random.randint(1, 100)
+        self.remaining_chances = self.max_chances
+        self.input_var.set("")
+        self.result_label.config(text="")
+        self.chances_label.config(text=f"Chances left: {self.remaining_chances}")
+        self.submit_btn.config(state='normal')
+        self.play_again_btn.config(state='disabled')
+        self.display.config(state='normal')
+        self.display.focus_set()
+
+    def check_guess(self):
+        guess_str = self.input_var.get()
+        if not guess_str.isdigit():
+            messagebox.showwarning("Invalid Input", "Please enter a valid number between 1 and 100.")
+            return
+
+        guess = int(guess_str)
+        if guess < 1 or guess > 100:
+            self.result_label.config(text="Enter a number between 1 and 100.")
+            return
+
+        self.remaining_chances -= 1
+        self.chances_label.config(text=f"Chances left: {self.remaining_chances}")
+
+        if guess == self.number:
+            self.result_label.config(text=f"You are the Winner! 🎉 The number was {self.number}")
+            self.end_game()
+        elif abs(guess - self.number) <= 5:
+            self.result_label.config(text="Very Close! Try Again 🔍")
+        elif guess < self.number:
+            self.result_label.config(text="Too Low ⬇")
+        else:
+            self.result_label.config(text="Too High ⬆")
+
+        if self.remaining_chances == 0 and guess != self.number:
+            self.result_label.config(text=f"Out of chances! ❌ The number was {self.number}")
+            self.end_game()
+
+        self.input_var.set("")
+
+    def end_game(self):
+        self.submit_btn.config(state='disabled')
+        self.play_again_btn.config(state='normal')
+        self.display.config(state='disabled')
+
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = NumberGuessingGame(root)
+    game = NumberGuessingGame(root)
     root.mainloop()
